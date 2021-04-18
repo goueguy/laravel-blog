@@ -4,8 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 class PostsController extends Controller
 {
+
+     /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->middleware('auth')->except(['index','show']);
+    }
     /**
      * Display a listing of the resource.
      *
@@ -13,7 +26,8 @@ class PostsController extends Controller
      */
     public function index()
     {
-        $posts = Post::all();
+        
+        $posts = Post::orderBy('id','desc')->get();
         return view("posts.index")->with('posts',$posts);
     }
 
@@ -24,7 +38,7 @@ class PostsController extends Controller
      */
     public function create()
     {
-        //
+        return view("posts.create");
     }
 
     /**
@@ -35,7 +49,37 @@ class PostsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $this->validate($request,[
+
+            "title"=>'required|min:3',
+            "body"=>'required|min:3',
+            "cover_image"=>"image|required|max:1024|mimes:jpeg,jpg,bmp,png"
+        ]);
+
+        if($request->hasFile("cover_image")){
+            //get file with extension
+            $fileNameWithExtension = $request->file("cover_image")->getClientOriginalName();
+            //get filename
+            $fileName = pathinfo($fileNameWithExtension, PATHINFO_FILENAME);
+            //get file extension
+            $extension = $request->file("cover_image")->getClientOriginalExtension();
+            //file to store in database
+            $fileNameStore = $fileName."_".time()."_".$extension;
+            //$path = $request->file("cover_image")->store("public/cover_images",$fileNameStore);
+             $request->file("cover_image")->move("cover_images", $fileNameStore);
+        }else{
+            $fileNameStore = "default.png";
+        }
+        $data = [
+
+            "body"=>$request->input("body"),
+            "title"=>$request->input('title'),
+            "user_id"=>Auth::id(),
+            "cover_image"=>$fileNameStore
+        ];
+        Post::create($data);
+
+        return redirect('posts')->with("status","Post inserted ");
     }
 
     /**
@@ -59,7 +103,9 @@ class PostsController extends Controller
      */
     public function edit($id)
     {
-        
+        $post = Post::find($id);
+
+        return view("posts.edit")->with("post",$post);
     }
 
     /**
@@ -69,9 +115,22 @@ class PostsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Post $post)
     {
-        //
+        $this->authorize('update', $post);
+        $this->validate($request,[
+
+            "title"=>'required|min:3',
+            "body"=>'required|min:3'
+        ]);
+
+        $data = [
+
+            "body"=>$request->input("body"),
+            "title"=>$request->input('title')
+        ];
+        Post::where('id', $request->input('id_post'))->update($data);
+        return redirect('posts')->with("status","Post updated ");
     }
 
     /**
@@ -80,8 +139,10 @@ class PostsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Post $post)
     {
-        //
+        $this->authorize('delete', $post);
+        $post->delete();
+        return redirect('posts')->with("status","Post deleted");
     }
 }
