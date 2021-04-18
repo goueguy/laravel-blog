@@ -5,7 +5,10 @@
 
 	@if(!empty($post))
 			<div class="row">
-					<div class="col-md-12">
+					<div class="col-md-4">
+						<img src="/cover_images/{{$post->cover_image}}" style="width: 100%;height:200px" alt="">
+					</div>
+					<div class="col-md-8">
 						<div class="card">
 							<div class="card-body p-3">
 								<h3><a href="{{route('posts.show',$post->id)}}">{{$post->title}}</a>
